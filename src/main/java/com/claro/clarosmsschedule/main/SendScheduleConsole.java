@@ -10,13 +10,11 @@ import com.claro.clarosmsschedule.connection.SmppCredential;
 import com.claro.clarosmsschedule.db.DbCredential;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -64,12 +62,6 @@ public class SendScheduleConsole implements Runnable {
 
     /**
      * *
-     * Default date formatter.
-     */
-    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-
-    /**
-     * *
      * _changeStateProcess.
      */
     private final IChangeStateProcess _changeStateProcess;
@@ -85,12 +77,6 @@ public class SendScheduleConsole implements Runnable {
      * _credentials.
      */
     private final Map<String, DbCredential> _credentials;
-
-    /**
-     * *
-     * _object.
-     */
-    private Object _object = new Object();
 
     /**
      * *
