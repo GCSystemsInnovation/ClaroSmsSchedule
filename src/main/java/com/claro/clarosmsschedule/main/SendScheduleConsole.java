@@ -165,24 +165,23 @@ public class SendScheduleConsole implements Runnable {
         while (true) {
             try {
                 LocalTime localTime = LocalTime.now();
-
                 if (localTime.getHour() < this._smppCredential.startHour || (localTime.getHour() > this._smppCredential.endHour
                         && SendScheduleConsole.smsThread == null)) {
 
-                    LOGGER.error("SendScheduleConsole__Run ---------------TIEMPO DE ESPERA---------------");
+                    LOGGER.info("SendScheduleConsole__Run ---------------TIEMPO DE ESPERA---------------");
                     wait(SendScheduleConsole.timeout);
 
                 } else if (localTime.getHour() >= this._smppCredential.startHour && localTime.getHour() < this._smppCredential.endHour
                         && SendScheduleConsole.smsThread == null) {
 
-                    LOGGER.error("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
+                    LOGGER.info("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
                     SendScheduleConsole.smsThread = new Thread(new SendScheduler(this._changeStateProcess, this._smppCredential, this._credentials));
                     SendScheduleConsole.smsThread.start();
                     
                 } else if (localTime.getHour() > this._smppCredential.endHour
                         && SendScheduleConsole.smsThread != null) {
 
-                    LOGGER.error("SendScheduleConsole__Run ---------------TERMINÓ----------------");
+                    LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
                     this._changeStateProcess.ChangeStateProcess(true);
                 }
             } catch (InterruptedException e) {
