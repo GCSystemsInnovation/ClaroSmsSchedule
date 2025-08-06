@@ -42,9 +42,21 @@ public class SmppCredential {
 
     /**
      * *
-     * Smpp waitLock.
+     * Smpp timeout.
      */
-    public int waitLock;
+    public int timeout;
+
+    /**
+     * *
+     * Smpp startHour.
+     */
+    public int startHour;
+
+    /**
+     * *
+     * Smpp endHour.
+     */
+    public int endHour;
 
     /**
      * *

@@ -4,18 +4,19 @@
  */
 package com.claro.clarosmsschedule.main;
 
+import com.claro.clarosmsschedule.adapter.FilePropertiesReaderAdapter;
+import com.claro.clarosmsschedule.adapter.IFileReaderAdapter;
 import com.claro.clarosmsschedule.connection.SmppCredential;
 import com.claro.clarosmsschedule.db.DbCredential;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,19 +24,31 @@ import org.apache.logging.log4j.Logger;
  *
  * @author aifre
  */
-public class SendScheduleConsole {
+public class SendScheduleConsole implements Runnable {
 
     /**
      * *
-     *
+     * Sms Thread.
      */
-    private static Thread thread;
+    private static Thread smsThread;
 
     /**
      * *
-     *
+     * Monitoring Thread.
+     */
+    private static Thread monitoringThread;
+
+    /**
+     * *
+     * send Scheduler Manager.
      */
     private static SendScheduler sendScheduler;
+
+    /**
+     * *
+     * _timeout.
+     */
+    private static long timeout = 0;
 
     /**
      * *
@@ -51,6 +64,49 @@ public class SendScheduleConsole {
 
     /**
      * *
+     * Default date formatter.
+     */
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    /**
+     * *
+     * _changeStateProcess.
+     */
+    private final IChangeStateProcess _changeStateProcess;
+
+    /**
+     * *
+     * _smppCredential.
+     */
+    private final SmppCredential _smppCredential;
+
+    /**
+     * *
+     * _credentials.
+     */
+    private final Map<String, DbCredential> _credentials;
+
+    /**
+     * *
+     * _object.
+     */
+    private Object _object = new Object();
+
+    /**
+     * *
+     *
+     * @param changeStateProcess
+     * @param smppCredential
+     * @param credentials
+     */
+    private SendScheduleConsole(IChangeStateProcess changeStateProcess, SmppCredential smppCredential, Map<String, DbCredential> credentials) {
+        this._changeStateProcess = changeStateProcess;
+        this._credentials = credentials;
+        this._smppCredential = smppCredential;
+    }
+
+    /**
+     * *
      * Main Method.
      *
      * @param args
@@ -59,77 +115,79 @@ public class SendScheduleConsole {
         try {
             IChangeStateProcess changeStateProcess;
             changeStateProcess = (boolean state) -> {
-                if (state && thread != null) {
-                    thread.interrupt();
-                    thread = null;
+                if (state && SendScheduleConsole.smsThread != null) {
+                    SendScheduleConsole.smsThread.interrupt();
+                    SendScheduleConsole.smsThread = null;
                 }
             };
-            String userDir = System.getProperty("user.dir");
-            String settingsPath = userDir + File.separator + "settings.properties";
-            String settingsFilePath = System.getProperty("settingsFilePath", settingsPath);
-            File settingsFile = new File(settingsFilePath);
-            if (!settingsFile.exists()) {
-                LOGGER.error("Error: El archivo de configuracino existe en la ruta: {}", new Object[]{settingsFilePath});
-                return;
+
+            IFileReaderAdapter fileReaderAdapter = new FilePropertiesReaderAdapter();
+            final SmppCredential smppCredential = fileReaderAdapter.fillSmppCredentialFromProperties();
+
+            DbCredential dbCredentialInhBroad = fileReaderAdapter.fillDbCredentialInhBroadFromProperties();
+            DbCredential dbCredentialHernanMz = fileReaderAdapter.fillDbCredentialHernanMzFromProperties();
+            if (dbCredentialInhBroad != null && dbCredentialHernanMz != null) {
+                final Map<String, DbCredential> credentials = new HashMap<>();
+                credentials.put("INH_BROAD_KEY", dbCredentialInhBroad);
+                credentials.put("HERNANMZ_KEY", dbCredentialHernanMz);
+
+                SendScheduleConsole.timeout = TimeUnit.MINUTES.toMillis(smppCredential.timeout);
+                SendScheduleConsole.monitoringThread = new Thread(new SendScheduleConsole(changeStateProcess, smppCredential, credentials));
+                SendScheduleConsole.monitoringThread.start();
             }
-            System.out.println("Usando archivo de configuracien: " + settingsFilePath);
-            LOGGER.info("{} PROPERTIES LOAD", new Object[]{formatter.format(new Date())});
-            Properties properties = new Properties();
-            try (InputStream input = new FileInputStream(settingsFilePath)) {
-                properties.load(input);
-            }
-            SmppCredential smppCredential = new SmppCredential();
-            smppCredential.ipAddress = properties.getProperty("smpp.ipAddress", "127.0.0.1");
-            smppCredential.port = Integer.parseInt(properties.getProperty("smpp.port", "0"));
-            smppCredential.password = properties.getProperty("smpp.password", "");
-            smppCredential.systemId = properties.getProperty("smpp.systemId", "");
-            smppCredential.systemType = properties.getProperty("smpp.systemType", "");
-            Map<String, DbCredential> credentials = new HashMap<>();
-            DbCredential dbCredentialInhBroad = new DbCredential();
-            dbCredentialInhBroad.url = properties.getProperty("database.svr_smoqa.url", "");
-            dbCredentialInhBroad.username = properties.getProperty("database.svr_smoqa.user", "");
-            dbCredentialInhBroad.password = properties.getProperty("database.svr_smoqa.password", "");
-            credentials.put("INH_BROAD_KEY", dbCredentialInhBroad);
-            String dbName = properties.getProperty("database.svr_smoqa.name");
-            if (dbName == null || dbName.isEmpty()) {
-                LOGGER.error("Error: THE DATABASE NAME WASN'T LOADED database.svr_smoqa.name");
-                return;
-            }
-            LOGGER.info("{} LOADING PROPERTIES DATABASE {}", new Object[]{formatter.format(new Date()), dbName});
-            DbCredential dbCredentialHernanMz = new DbCredential();
-            dbCredentialHernanMz.url = properties.getProperty("database.datarpqa.url", "");
-            dbCredentialHernanMz.username = properties.getProperty("database.datarpqa.user", "");
-            dbCredentialHernanMz.password = properties.getProperty("database.datarpqa.password", "");
-            credentials.put("HERNANMZ_KEY", dbCredentialHernanMz);
-            dbName = properties.getProperty("database.datarpqa.name");
-            if (dbName == null || dbName.isEmpty()) {
-                LOGGER.error("Error: THE DATABASE NAME WASN'T LOADED database.datarpqa.name");
-                return;
-            }
-            LOGGER.info("{} LOADING PROPERTIES DATABASE {}", new Object[]{formatter.format(new Date()), dbName});
-            setSendScheduler(new SendScheduler(changeStateProcess, smppCredential, credentials));
-            getThread().start();
-        } catch (IOException e) {
-            LOGGER.error("{} ERROR READING THE PROPERTIES FILE: {}", new Object[]{formatter.format(new Date()), e.getMessage()});
         } catch (Exception e) {
             LOGGER.error("{} UNEXPECTED ERROR: {}", new Object[]{formatter.format(new Date()), e.getMessage(), e});
         }
     }
 
-    public static Thread getThread() {
-        thread = new Thread(getSendScheduler());
-        return thread;
-    }
-
-    public static void setThread(Thread thread) {
-        SendScheduleConsole.thread = thread;
-    }
-
+    /**
+     * *
+     * getSendScheduler.
+     *
+     * @return
+     */
     public static SendScheduler getSendScheduler() {
         return sendScheduler;
     }
 
+    /**
+     * *
+     * setSendScheduler.
+     *
+     * @param sendScheduler
+     */
     public static void setSendScheduler(SendScheduler sendScheduler) {
         SendScheduleConsole.sendScheduler = sendScheduler;
+    }
+
+    @Override
+    public synchronized void run() {
+        while (true) {
+            try {
+                LocalTime localTime = LocalTime.now();
+
+                if (localTime.getHour() < this._smppCredential.startHour || (localTime.getHour() > this._smppCredential.endHour
+                        && SendScheduleConsole.smsThread == null)) {
+
+                    LOGGER.error("SendScheduleConsole__Run ---------------TIEMPO DE ESPERA---------------");
+                    wait(SendScheduleConsole.timeout);
+
+                } else if (localTime.getHour() >= this._smppCredential.startHour && localTime.getHour() < this._smppCredential.endHour
+                        && SendScheduleConsole.smsThread == null) {
+
+                    LOGGER.error("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
+                    SendScheduleConsole.smsThread = new Thread(new SendScheduler(this._changeStateProcess, this._smppCredential, this._credentials));
+                    SendScheduleConsole.smsThread.start();
+                    
+                } else if (localTime.getHour() > this._smppCredential.endHour
+                        && SendScheduleConsole.smsThread != null) {
+
+                    LOGGER.error("SendScheduleConsole__Run ---------------TERMINÓ----------------");
+                    this._changeStateProcess.ChangeStateProcess(true);
+                }
+            } catch (InterruptedException e) {
+                LOGGER.error("{} SendScheduleConsole__Run UNEXPECTED ERROR: {}", new Object[]{formatter.format(new Date()), e.getMessage(), e});
+            }
+        }
     }
 }

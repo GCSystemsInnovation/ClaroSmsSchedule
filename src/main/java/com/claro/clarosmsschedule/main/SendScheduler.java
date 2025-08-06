@@ -10,6 +10,7 @@ import com.claro.clarosmsschedule.model.InhFactEnvioSmsBprep;
 import com.claro.clarosmsschedule.dto.SmsUserDto;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -96,7 +97,8 @@ public class SendScheduler implements Runnable {
                     List<SmsUserDto> userList = this.envioSmsBprepDao.getUserList(schedule.getFechaEjecucion());
                     if (userList != null && !userList.isEmpty()) {
                         for (SmsUserDto smsUserDto : userList) {
-                            String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
+                            String messageId = "12300";
+                            //String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
                             InhFactEnvioSmsBprep bprep = new InhFactEnvioSmsBprep();
                             bprep.setFechaEnvio(formatter.format(new Date()));
                             bprep.setIntentos(smsUserDto.getRetry().add(BigInteger.valueOf(1)));
@@ -124,7 +126,7 @@ public class SendScheduler implements Runnable {
 
                 }
             }
-        } catch (Exception ex) {
+        } catch (SQLException ex) {
             LOGGER.error(SendScheduler.class.getName(), formatter.format(new Date()), ex);
         } finally {
             this.isAlive = false;
