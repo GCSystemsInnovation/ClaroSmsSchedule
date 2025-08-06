@@ -97,8 +97,7 @@ public class SendScheduler implements Runnable {
                     List<SmsUserDto> userList = this.envioSmsBprepDao.getUserList(schedule.getFechaEjecucion());
                     if (userList != null && !userList.isEmpty()) {
                         for (SmsUserDto smsUserDto : userList) {
-                            String messageId = "12300";
-                            //String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
+                            String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
                             InhFactEnvioSmsBprep bprep = new InhFactEnvioSmsBprep();
                             bprep.setFechaEnvio(formatter.format(new Date()));
                             bprep.setIntentos(smsUserDto.getRetry().add(BigInteger.valueOf(1)));
