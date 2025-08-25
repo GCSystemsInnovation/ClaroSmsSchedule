@@ -42,24 +42,6 @@ public class SmppCredential {
 
     /**
      * *
-     * Smpp timeout.
-     */
-    public int timeout;
-
-    /**
-     * *
-     * Smpp startHour.
-     */
-    public int startHour;
-
-    /**
-     * *
-     * Smpp endHour.
-     */
-    public int endHour;
-
-    /**
-     * *
      * Smpp port.
      */
     public int port;

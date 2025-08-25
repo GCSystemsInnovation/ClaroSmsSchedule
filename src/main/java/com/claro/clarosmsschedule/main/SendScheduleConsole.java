@@ -8,6 +8,7 @@ import com.claro.clarosmsschedule.adapter.FilePropertiesReaderAdapter;
 import com.claro.clarosmsschedule.adapter.IFileReaderAdapter;
 import com.claro.clarosmsschedule.connection.SmppCredential;
 import com.claro.clarosmsschedule.db.DbCredential;
+import com.claro.clarosmsschedule.dto.ApplicationSetting;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.util.Date;
@@ -74,6 +75,12 @@ public class SendScheduleConsole implements Runnable {
 
     /**
      * *
+     * _appApplicationSetting.
+     */
+    private ApplicationSetting _appApplicationSetting = null;
+
+    /**
+     * *
      * _credentials.
      */
     private final Map<String, DbCredential> _credentials;
@@ -84,11 +91,13 @@ public class SendScheduleConsole implements Runnable {
      * @param changeStateProcess
      * @param smppCredential
      * @param credentials
+     * @param appApplicationSetting
      */
-    private SendScheduleConsole(IChangeStateProcess changeStateProcess, SmppCredential smppCredential, Map<String, DbCredential> credentials) {
+    private SendScheduleConsole(IChangeStateProcess changeStateProcess, ApplicationSetting appApplicationSetting, SmppCredential smppCredential, Map<String, DbCredential> credentials) {
         this._changeStateProcess = changeStateProcess;
         this._credentials = credentials;
         this._smppCredential = smppCredential;
+        this._appApplicationSetting = appApplicationSetting;
     }
 
     /**
@@ -108,8 +117,9 @@ public class SendScheduleConsole implements Runnable {
             };
 
             IFileReaderAdapter fileReaderAdapter = new FilePropertiesReaderAdapter();
-            final SmppCredential smppCredential = fileReaderAdapter.fillSmppCredentialFromProperties();
+            final ApplicationSetting applicationSetting = fileReaderAdapter.fillApplicationSettingFromProperties();
 
+            SmppCredential smppCredential = fileReaderAdapter.fillSmppCredentialFromProperties();
             DbCredential dbCredentialInhBroad = fileReaderAdapter.fillDbCredentialInhBroadFromProperties();
             DbCredential dbCredentialHernanMz = fileReaderAdapter.fillDbCredentialHernanMzFromProperties();
             if (dbCredentialInhBroad != null && dbCredentialHernanMz != null) {
@@ -117,8 +127,8 @@ public class SendScheduleConsole implements Runnable {
                 credentials.put("INH_BROAD_KEY", dbCredentialInhBroad);
                 credentials.put("HERNANMZ_KEY", dbCredentialHernanMz);
 
-                SendScheduleConsole.timeout = TimeUnit.MINUTES.toMillis(smppCredential.timeout);
-                SendScheduleConsole.monitoringThread = new Thread(new SendScheduleConsole(changeStateProcess, smppCredential, credentials));
+                SendScheduleConsole.timeout = TimeUnit.MINUTES.toMillis(applicationSetting.timeout);
+                SendScheduleConsole.monitoringThread = new Thread(new SendScheduleConsole(changeStateProcess, applicationSetting, smppCredential, credentials));
                 SendScheduleConsole.monitoringThread.start();
             }
         } catch (Exception e) {
@@ -150,29 +160,50 @@ public class SendScheduleConsole implements Runnable {
     public synchronized void run() {
         while (true) {
             try {
-                LocalTime localTime = LocalTime.now();
-                if (localTime.getHour() < this._smppCredential.startHour || (localTime.getHour() > this._smppCredential.endHour
-                        && SendScheduleConsole.smsThread == null)) {
 
-                    LOGGER.info("SendScheduleConsole__Run ---------------TIEMPO DE ESPERA---------------");
-                    wait(SendScheduleConsole.timeout);
+                validateApplicationStartDate();
+                validateEndProccessDate();
 
-                } else if (localTime.getHour() >= this._smppCredential.startHour && localTime.getHour() < this._smppCredential.endHour
-                        && SendScheduleConsole.smsThread == null) {
-
-                    LOGGER.info("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
-                    SendScheduleConsole.smsThread = new Thread(new SendScheduler(this._changeStateProcess, this._smppCredential, this._credentials));
-                    SendScheduleConsole.smsThread.start();
-                    
-                } else if (localTime.getHour() > this._smppCredential.endHour
-                        && SendScheduleConsole.smsThread != null) {
-
-                    LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
-                    this._changeStateProcess.ChangeStateProcess(true);
-                }
+                LOGGER.info("SendScheduleConsole__Run ---------------TIEMPO DE ESPERA---------------");
+                wait(SendScheduleConsole.timeout);
+                
             } catch (InterruptedException e) {
                 LOGGER.error("{} SendScheduleConsole__Run UNEXPECTED ERROR: {}", new Object[]{formatter.format(new Date()), e.getMessage(), e});
+            } finally {
+                LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
+                this._changeStateProcess.ChangeStateProcess(true);
             }
+        }
+    }
+
+    /**
+     * *
+     * validate Application Start Date.
+     */
+    private synchronized void validateApplicationStartDate() {
+        LocalTime localTime = LocalTime.now();
+        if (localTime.getHour() >= this._appApplicationSetting.startHour
+                && localTime.getHour() < this._appApplicationSetting.endHour
+                && SendScheduleConsole.smsThread == null) {
+
+            LOGGER.info("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
+            SendScheduler scheduler = new SendScheduler(this._changeStateProcess, this._appApplicationSetting, this._smppCredential, this._credentials);
+            SendScheduleConsole.smsThread = new Thread(scheduler);
+            SendScheduleConsole.smsThread.start();
+        }
+    }
+
+    /**
+     * *
+     * validate End Proccess Date.
+     */
+    private synchronized void validateEndProccessDate() {
+        LocalTime localTime = LocalTime.now();
+        if (localTime.getHour() > this._appApplicationSetting.endHour
+                && SendScheduleConsole.smsThread != null) {
+
+            LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
+            this._changeStateProcess.ChangeStateProcess(true);
         }
     }
 }

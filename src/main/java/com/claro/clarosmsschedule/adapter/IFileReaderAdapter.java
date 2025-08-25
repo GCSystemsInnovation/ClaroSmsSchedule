@@ -6,6 +6,7 @@ package com.claro.clarosmsschedule.adapter;
 
 import com.claro.clarosmsschedule.connection.SmppCredential;
 import com.claro.clarosmsschedule.db.DbCredential;
+import com.claro.clarosmsschedule.dto.ApplicationSetting;
 import java.io.InputStream;
 
 /**
@@ -21,6 +22,14 @@ public interface IFileReaderAdapter {
      * @return
      */
     InputStream readPropertiesFile();
+
+    /**
+     * *
+     * Method used to fill ApplicationSetting From Properties.
+     * 
+     * @return
+     */
+    ApplicationSetting fillApplicationSettingFromProperties();
 
     /**
      * *

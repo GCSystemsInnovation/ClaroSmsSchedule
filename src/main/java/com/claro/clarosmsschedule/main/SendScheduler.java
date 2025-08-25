@@ -5,6 +5,7 @@ import com.claro.clarosmsschedule.connection.SmppCredential;
 import com.claro.clarosmsschedule.dao.CtrlBroadDwhDao;
 import com.claro.clarosmsschedule.dao.InhFactEnvioSmsBprepDao;
 import com.claro.clarosmsschedule.db.DbCredential;
+import com.claro.clarosmsschedule.dto.ApplicationSetting;
 import com.claro.clarosmsschedule.model.CtrlBroadDwh;
 import com.claro.clarosmsschedule.model.InhFactEnvioSmsBprep;
 import com.claro.clarosmsschedule.dto.SmsUserDto;
@@ -68,14 +69,22 @@ public class SendScheduler implements Runnable {
 
     /**
      * *
+     * _appApplicationSetting.
+     */
+    private final ApplicationSetting appApplicationSetting;
+
+    /**
+     * *
      * Public constructor.
      *
      * @param changeStateProcess
      * @param smppCredential Smpp credentials.
      * @param dbCredentials Database credentials.
+     * @param appApplicationSetting .
      */
-    public SendScheduler(IChangeStateProcess changeStateProcess, SmppCredential smppCredential, Map<String, DbCredential> dbCredentials) {
+    public SendScheduler(IChangeStateProcess changeStateProcess, ApplicationSetting appApplicationSetting, SmppCredential smppCredential, Map<String, DbCredential> dbCredentials) {
         this.changeStateProcess = changeStateProcess;
+        this.appApplicationSetting = appApplicationSetting;
         this.ctrlBroadDwhDao = new CtrlBroadDwhDao(dbCredentials.get(Utils.DB_CONNECTION_INH_BROAD_KEY));
         this.envioSmsBprepDao = new InhFactEnvioSmsBprepDao(dbCredentials.get(Utils.DB_CONNECTION_HERNANMZ_KEY));
         this.smppConnection = new SmppConnection(smppCredential.ipAddress, smppCredential.userName,
@@ -90,11 +99,12 @@ public class SendScheduler implements Runnable {
         try {
             LOGGER.info("{} STARTED PROCESS", formatter.format(new Date()));
             this.isAlive = true;
+            int pagination = 0;
             while (this.isAlive) {
                 CtrlBroadDwh schedule = this.ctrlBroadDwhDao.getMaxSchedule();
                 if (schedule != null) {
                     LOGGER.info("{} PROCESS INITIATED BY THE EXECUTION DATE: {}", formatter.format(new Date()), schedule.getFechaEjecucion());
-                    List<SmsUserDto> userList = this.envioSmsBprepDao.getUserList(schedule.getFechaEjecucion());
+                    List<SmsUserDto> userList = this.envioSmsBprepDao.getUserList(schedule.getFechaEjecucion(), pagination, appApplicationSetting.pagination);
                     if (userList != null && !userList.isEmpty()) {
                         for (SmsUserDto smsUserDto : userList) {
                             String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
@@ -119,6 +129,8 @@ public class SendScheduler implements Runnable {
                         if (updated) {
                             LOGGER.info("{} SCHEDULE FOR RUN DATE UPDATED: {}", formatter.format(new Date()), schedule.getFechaEjecucion());
                         }
+
+                        pagination = pagination + this.appApplicationSetting.pagination;
                     }
 
                     this.isAlive = false;

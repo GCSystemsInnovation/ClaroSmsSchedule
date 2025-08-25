@@ -52,9 +52,11 @@ public class InhFactEnvioSmsBprepDao extends DbConnectionDao {
      * Method used to get all entity element.
      *
      * @param mesDesact date in format AAAAMM.
+     * @param startPagination .
+     * @param endPagination .
      * @return
      */
-    public List<SmsUserDto> getUserList(String mesDesact) throws SQLException {
+    public List<SmsUserDto> getUserList(String mesDesact, int startPagination, int endPagination) throws SQLException {
         Connection connection = null;
         List<SmsUserDto> smsUserDtos = new ArrayList<>();
         try {
@@ -68,10 +70,14 @@ public class InhFactEnvioSmsBprepDao extends DbConnectionDao {
                     + "ifesb.INTENTOS "
                     + "FROM HERNANMZ.INH_FACT_ENVIO_SMS_BPREP ifesb "
                     + "INNER JOIN HERNANMZ.INH_FACT_ENVIO_SMS_DESC ifesd ON ifesb.CODIGO_SMS = ifesd.CODIGO_SMS "
-                    + "WHERE ifesb.INTENTOS < 3	AND ifesb.MES_DESACT = ?";
+                    + "WHERE ifesb.INTENTOS < 3	"
+                    + "AND ifesb.MES_DESACT = ? "
+                    + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
             connection = this.getDbConnection().connect();
             PreparedStatement preparedStatement = connection.prepareStatement(query);
             preparedStatement.setString(1, mesDesact);
+            preparedStatement.setInt(2, startPagination);
+            preparedStatement.setInt(3, endPagination);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 SmsUserDto smsUserDto = new SmsUserDto();
