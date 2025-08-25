@@ -132,9 +132,9 @@ public class SendScheduler implements Runnable {
                         }
 
                         pagination = pagination + this.appApplicationSetting.pagination;
+                    } else {
+                        this.isAlive = false;
                     }
-
-                    this.isAlive = false;
                 }
             }
         } catch (SQLException ex) {
