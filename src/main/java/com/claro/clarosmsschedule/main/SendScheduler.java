@@ -105,6 +105,7 @@ public class SendScheduler implements Runnable {
                 if (schedule != null) {
                     LOGGER.info("{} PROCESS INITIATED BY THE EXECUTION DATE: {}", formatter.format(new Date()), schedule.getFechaEjecucion());
                     List<SmsUserDto> userList = this.envioSmsBprepDao.getUserList(schedule.getFechaEjecucion(), pagination, appApplicationSetting.pagination);
+                    LOGGER.info(" ------PAGE RANGE-------:{} - {}", pagination, appApplicationSetting.pagination);
                     if (userList != null && !userList.isEmpty()) {
                         for (SmsUserDto smsUserDto : userList) {
                             String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
@@ -134,7 +135,6 @@ public class SendScheduler implements Runnable {
                     }
 
                     this.isAlive = false;
-
                 }
             }
         } catch (SQLException ex) {
