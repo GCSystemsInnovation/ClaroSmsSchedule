@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -156,6 +157,9 @@ public class SendScheduleConsole implements Runnable {
         SendScheduleConsole.sendScheduler = sendScheduler;
     }
 
+    /***
+     * 
+     */
     @Override
     public synchronized void run() {
         while (true) {
@@ -166,12 +170,17 @@ public class SendScheduleConsole implements Runnable {
 
                 LOGGER.info("SendScheduleConsole__Run ---------------TIEMPO DE ESPERA---------------");
                 wait(SendScheduleConsole.timeout);
-                
+
             } catch (InterruptedException e) {
                 LOGGER.error("{} SendScheduleConsole__Run UNEXPECTED ERROR: {}", new Object[]{formatter.format(new Date()), e.getMessage(), e});
             } finally {
-                LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
-                this._changeStateProcess.ChangeStateProcess(true);
+                try {
+                    LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
+                    this._changeStateProcess.ChangeStateProcess(true);
+                    wait(100);
+                } catch (InterruptedException ex) {
+                    LOGGER.info("Run_Exception: {}", ex.getMessage());
+                }
             }
         }
     }
@@ -180,12 +189,13 @@ public class SendScheduleConsole implements Runnable {
      * *
      * validate Application Start Date.
      */
-    private synchronized void validateApplicationStartDate() {
+    private synchronized void validateApplicationStartDate() throws InterruptedException {
         LocalTime localTime = LocalTime.now();
         if (localTime.getHour() >= this._appApplicationSetting.startHour
                 && localTime.getHour() < this._appApplicationSetting.endHour
                 && SendScheduleConsole.smsThread == null) {
 
+            wait(100);
             LOGGER.info("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
             SendScheduler scheduler = new SendScheduler(this._changeStateProcess, this._appApplicationSetting, this._smppCredential, this._credentials);
             SendScheduleConsole.smsThread = new Thread(scheduler);
