@@ -47,19 +47,19 @@ public class SendScheduler implements Runnable {
      * *
      * ctrlBroadDwh Dao.
      */
-    private final CtrlBroadDwhDao ctrlBroadDwhDao;
+    private CtrlBroadDwhDao ctrlBroadDwhDao;
 
     /**
      * *
      * envio Sms Bprep Dao.
      */
-    private final InhFactEnvioSmsBprepDao envioSmsBprepDao;
+    private InhFactEnvioSmsBprepDao envioSmsBprepDao;
 
     /**
      * *
      * envio Sms Desc Jpa Controller.
      */
-    private final SmppConnection smppConnection;
+    private SmppConnection smppConnection;
 
     /**
      * *
@@ -85,10 +85,9 @@ public class SendScheduler implements Runnable {
     public SendScheduler(IChangeStateProcess changeStateProcess, ApplicationSetting appApplicationSetting, SmppCredential smppCredential, Map<String, DbCredential> dbCredentials) {
         this.changeStateProcess = changeStateProcess;
         this.appApplicationSetting = appApplicationSetting;
-        this.ctrlBroadDwhDao = new CtrlBroadDwhDao(dbCredentials.get(Utils.DB_CONNECTION_INH_BROAD_KEY));
-        this.envioSmsBprepDao = new InhFactEnvioSmsBprepDao(dbCredentials.get(Utils.DB_CONNECTION_HERNANMZ_KEY));
-        this.smppConnection = new SmppConnection(smppCredential.ipAddress, smppCredential.userName,
-                smppCredential.password, smppCredential.port, smppCredential.systemId, smppCredential.systemType);
+        this.getCtrlBroadDwhDao(dbCredentials.get(Utils.DB_CONNECTION_INH_BROAD_KEY));
+        this.getInhFactEnvioSmsBprepDao(dbCredentials.get(Utils.DB_CONNECTION_HERNANMZ_KEY));
+        this.getSmppConnection(smppCredential);
     }
 
     /**
@@ -109,15 +108,20 @@ public class SendScheduler implements Runnable {
                     if (userList != null && !userList.isEmpty()) {
                         for (SmsUserDto smsUserDto : userList) {
                             String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(), smsUserDto.getnMin());
-                            InhFactEnvioSmsBprep bprep = new InhFactEnvioSmsBprep();
-                            bprep.setFechaEnvio(formatter.format(new Date()));
-                            bprep.setIntentos(smsUserDto.getRetry().add(BigInteger.valueOf(1)));
-                            bprep.setIdSequencia(smsUserDto.getInhFactEnvioSmsBprep_Id());
-                            bprep.setEstadoSms(messageId != null && !messageId.isEmpty() ? ESmsState.SENT_SMS.getNumber() : ESmsState.PENDING_SMS.getNumber());
-                            bprep.setCscSmsc(messageId != null && !messageId.isEmpty() ? messageId : null);
-                            boolean userUpdated = this.envioSmsBprepDao.updateUser(bprep);
-                            if (userUpdated) {
-                                LOGGER.info("{} MESSAGE SENT TO NUMBER: {}", formatter.format(new Date()), smsUserDto.getnMin());
+
+                            if (messageId != null && !messageId.isEmpty()) {
+                                InhFactEnvioSmsBprep bprep = new InhFactEnvioSmsBprep();
+                                bprep.setFechaEnvio(formatter.format(new Date()));
+                                bprep.setIntentos(smsUserDto.getRetry().add(BigInteger.valueOf(1)));
+                                bprep.setIdSequencia(smsUserDto.getInhFactEnvioSmsBprep_Id());
+                                bprep.setEstadoSms(ESmsState.SENT_SMS.getNumber());
+                                bprep.setCscSmsc(messageId);
+                                boolean userUpdated = this.envioSmsBprepDao.updateUser(bprep);
+                                if (userUpdated) {
+                                    LOGGER.info("{} MESSAGE SENT TO NUMBER: {}", formatter.format(new Date()), smsUserDto.getnMin());
+                                }
+                            } else {
+                                LOGGER.info("{} MESSAGE WASN´T SEND", formatter.format(new Date()));
                             }
                         }
 
@@ -145,4 +149,44 @@ public class SendScheduler implements Runnable {
         }
     }
 
+    /**
+     * *
+     *
+     * @param smppCredential
+     * @return
+     */
+    private SmppConnection getSmppConnection(SmppCredential smppCredential) {
+        if (this.smppConnection == null) {
+            this.smppConnection = new SmppConnection(smppCredential.ipAddress, smppCredential.userName,
+                    smppCredential.password, smppCredential.port, smppCredential.systemId, smppCredential.systemType);
+        }
+
+        return this.smppConnection;
+    }
+
+    /**
+     * *
+     *
+     * @param hernanmzCredentials
+     * @return
+     */
+    private InhFactEnvioSmsBprepDao getInhFactEnvioSmsBprepDao(DbCredential hernanmzCredentials) {
+        if (this.envioSmsBprepDao == null) {
+            this.envioSmsBprepDao = new InhFactEnvioSmsBprepDao(hernanmzCredentials);
+        }
+        return this.envioSmsBprepDao;
+    }
+
+    /**
+     * *
+     *
+     * @param hernanmzCredentials
+     * @return
+     */
+    private CtrlBroadDwhDao getCtrlBroadDwhDao(DbCredential inhBroadCredentials) {
+        if (this.ctrlBroadDwhDao == null) {
+            this.ctrlBroadDwhDao = new CtrlBroadDwhDao(inhBroadCredentials);
+        }
+        return this.ctrlBroadDwhDao;
+    }
 }

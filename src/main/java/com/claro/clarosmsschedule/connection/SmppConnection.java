@@ -28,8 +28,6 @@ import org.jsmpp.session.SMPPSession;
 import org.jsmpp.session.SubmitSmResult;
 import org.jsmpp.util.AbsoluteTimeFormatter;
 import org.jsmpp.util.TimeFormatter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -138,31 +136,36 @@ public class SmppConnection {
         LOGGER.info("Broadcasting sms");
 
         SubmitSmResult result;
-        this.session = initSession();
-        if (session != null) {
-            try {
+        try {
+            this.session = initSession();
+            if (session != null) {
+                try {
 
-                String systemIdResult = session.connectAndBind(this.smppIp, this.port, new BindParameter(BindType.BIND_TRX, this.systemId, this.password, this.systemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
-                LOGGER.info("Connected with SMSC with system id {}", systemIdResult);
+                    String systemIdResult = session.connectAndBind(this.smppIp, this.port, new BindParameter(BindType.BIND_TRX, this.systemId, this.password, this.systemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
+                    LOGGER.info("Connected with SMSC with system id {}", systemIdResult);
 
-                result = session.submitShortMessage(this.SERVICE_TYPE,
-                        TypeOfNumber.INTERNATIONAL, NumberingPlanIndicator.UNKNOWN, this.sourceNumber,
-                        TypeOfNumber.INTERNATIONAL, NumberingPlanIndicator.UNKNOWN, number,
-                        new ESMClass(), (byte) 0, (byte) 1, TIME_FORMATTER.format(new Date()), null,
-                        new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT), (byte) 0,
-                        new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0, message.getBytes());
+                    result = session.submitShortMessage(this.SERVICE_TYPE,
+                            TypeOfNumber.INTERNATIONAL, NumberingPlanIndicator.UNKNOWN, this.sourceNumber,
+                            TypeOfNumber.INTERNATIONAL, NumberingPlanIndicator.UNKNOWN, number,
+                            new ESMClass(), (byte) 0, (byte) 1, TIME_FORMATTER.format(new Date()), null,
+                            new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT), (byte) 0,
+                            new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0, message.getBytes());
 
-                String messageId = result.getMessageId();
-                LOGGER.info("Messages submitted, result is {}", messageId);
-                return messageId;
-            } catch (PDUException | ResponseTimeoutException | InvalidResponseException | NegativeResponseException | IOException | IllegalArgumentException e) {
-                LOGGER.error(SmppConnection.class.getName(), formatter.format(new java.util.Date()), e);
+                    String messageId = result.getMessageId();
+                    LOGGER.info("Messages submitted, result is {}", messageId);
+                    return messageId;
+                } catch (PDUException | ResponseTimeoutException | InvalidResponseException | NegativeResponseException | IOException | IllegalArgumentException e) {
+                    LOGGER.error(SmppConnection.class.getName(), formatter.format(new java.util.Date()), e);
+                }
+            } else {
+                LOGGER.error("Session creation failed with SMPP broker.");
             }
-        } else {
-            LOGGER.error("Session creation failed with SMPP broker.");
-        }
-        if (session != null) {
-            session.unbindAndClose();
+        } catch (Exception e) {
+            LOGGER.error(SmppConnection.class.getName(), formatter.format(new java.util.Date()), e);
+        } finally {
+            if (session != null) {
+                session.unbindAndClose();
+            }
         }
 
         return null;
@@ -175,6 +178,10 @@ public class SmppConnection {
      * @return
      */
     private SMPPSession initSession() {
-        return new SMPPSession();
+        if (this.session == null) {
+            this.session = new SMPPSession();
+            this.session.setTransactionTimer(5000);
+        }
+        return this.session;
     }
 }
