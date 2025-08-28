@@ -209,7 +209,8 @@ public class SendScheduleConsole implements Runnable {
      */
     private synchronized void validateEndProccessDate() {
         LocalTime localTime = LocalTime.now();
-        if (localTime.getHour() > this._appApplicationSetting.endHour
+        if (localTime.getHour() <= this._appApplicationSetting.startHour
+                && localTime.getHour() > this._appApplicationSetting.endHour
                 && SendScheduleConsole.smsThread != null) {
 
             LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
