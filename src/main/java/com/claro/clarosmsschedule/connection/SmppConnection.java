@@ -163,9 +163,7 @@ public class SmppConnection {
         } catch (Exception e) {
             LOGGER.error(SmppConnection.class.getName(), formatter.format(new java.util.Date()), e);
         } finally {
-            if (session != null) {
-                session.unbindAndClose();
-            }
+            this.closeSmppConnection();
         }
 
         return null;
@@ -180,8 +178,24 @@ public class SmppConnection {
     private SMPPSession initSession() {
         if (this.session == null) {
             this.session = new SMPPSession();
-            this.session.setTransactionTimer(5000);
+            this.session.setTransactionTimer(8000);
         }
         return this.session;
+    }
+
+    /***
+     * 
+     */
+    private void closeSmppConnection() {
+        try {
+            if (this.session != null && this.session.getSessionState().isBound()) {
+                this.session.unbindAndClose();
+            } else {
+                this.session.close(); // cierre forzado
+            }
+        }catch (Exception e) {
+            System.err.println("Error inesperado al cerrar sesión SMPP: " + e.getMessage());
+        }
+        
     }
 }
