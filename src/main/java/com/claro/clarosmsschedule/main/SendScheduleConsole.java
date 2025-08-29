@@ -205,7 +205,7 @@ public class SendScheduleConsole implements Runnable {
      * validate Application Start Date.
      */
     private synchronized void validateApplicationStartDate() throws InterruptedException {
-        if ((this.isMorningRange() || this.isNightRange()) && SendScheduleConsole.smsThread == null) {
+        if (this.isInRange() && SendScheduleConsole.smsThread == null) {
 
             wait(100);
             LOGGER.info("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
@@ -220,7 +220,7 @@ public class SendScheduleConsole implements Runnable {
      * validate End Proccess Date.
      */
     private synchronized void validateEndProccessDate() {
-        if ((!this.isMorningRange() || !this.isNightRange())
+        if (!this.isInRange()
                 && SendScheduleConsole.smsThread != null) {
 
             LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
@@ -233,18 +233,17 @@ public class SendScheduleConsole implements Runnable {
      *
      * @return
      */
-    private boolean isMorningRange() {
+    private boolean isInRange() {
+        boolean isAvailable;
         LocalTime localTime = LocalTime.now();
-        return localTime.isAfter(this.startHour) && localTime.isBefore(this.endHour);
-    }
+        if (localTime.isBefore(this.endHour)) {
+            // Turno diurno: 08:00 - 18:00
+            isAvailable = !localTime.isBefore(this.startHour) && !localTime.isAfter(this.endHour);
+        } else {
+            // Turno nocturno que cruza medianoche: 19:00 - 08:00
+            isAvailable = localTime.isAfter(this.startHour) || localTime.isBefore(this.endHour);
+        }
 
-    /**
-     * *
-     *
-     * @return
-     */
-    private boolean isNightRange() {
-        LocalTime localTime = LocalTime.now();
-        return localTime.isBefore(this.startHour) || localTime.isAfter(this.endHour);
+        return isAvailable;
     }
 }
