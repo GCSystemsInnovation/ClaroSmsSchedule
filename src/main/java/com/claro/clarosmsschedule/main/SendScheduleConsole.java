@@ -88,6 +88,18 @@ public class SendScheduleConsole implements Runnable {
 
     /**
      * *
+     * startHour.
+     */
+    private final LocalTime startHour;
+
+    /**
+     * *
+     * endHour.
+     */
+    private final LocalTime endHour;
+
+    /**
+     * *
      *
      * @param changeStateProcess
      * @param smppCredential
@@ -99,6 +111,8 @@ public class SendScheduleConsole implements Runnable {
         this._credentials = credentials;
         this._smppCredential = smppCredential;
         this._appApplicationSetting = appApplicationSetting;
+        this.startHour = LocalTime.of(this._appApplicationSetting.startHour, 0);
+        this.endHour = LocalTime.of(this._appApplicationSetting.endHour, 0);
     }
 
     /**
@@ -157,8 +171,9 @@ public class SendScheduleConsole implements Runnable {
         SendScheduleConsole.sendScheduler = sendScheduler;
     }
 
-    /***
-     * 
+    /**
+     * *
+     *
      */
     @Override
     public synchronized void run() {
@@ -190,10 +205,7 @@ public class SendScheduleConsole implements Runnable {
      * validate Application Start Date.
      */
     private synchronized void validateApplicationStartDate() throws InterruptedException {
-        LocalTime localTime = LocalTime.now();
-        if (localTime.getHour() >= this._appApplicationSetting.startHour
-                && localTime.getHour() < this._appApplicationSetting.endHour
-                && SendScheduleConsole.smsThread == null) {
+        if ((this.isMorningRange() || this.isNightRange()) && SendScheduleConsole.smsThread == null) {
 
             wait(100);
             LOGGER.info("SendScheduleConsole__Run ---------------ARRANCÓ---------------");
@@ -208,13 +220,31 @@ public class SendScheduleConsole implements Runnable {
      * validate End Proccess Date.
      */
     private synchronized void validateEndProccessDate() {
-        LocalTime localTime = LocalTime.now();
-        if (localTime.getHour() <= this._appApplicationSetting.startHour
-                && localTime.getHour() > this._appApplicationSetting.endHour
+        if ((!this.isMorningRange() || !this.isNightRange())
                 && SendScheduleConsole.smsThread != null) {
 
             LOGGER.info("SendScheduleConsole__Run ---------------TERMINÓ----------------");
             this._changeStateProcess.ChangeStateProcess(true);
         }
+    }
+
+    /**
+     * *
+     *
+     * @return
+     */
+    private boolean isMorningRange() {
+        LocalTime localTime = LocalTime.now();
+        return localTime.isAfter(this.startHour) && localTime.isBefore(this.endHour);
+    }
+
+    /**
+     * *
+     *
+     * @return
+     */
+    private boolean isNightRange() {
+        LocalTime localTime = LocalTime.now();
+        return localTime.isBefore(this.startHour) || localTime.isAfter(this.endHour);
     }
 }
