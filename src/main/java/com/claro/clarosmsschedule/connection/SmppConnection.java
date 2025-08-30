@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.claro.clarosmsschedule.connection;
 
 import com.claro.clarosmsschedule.dao.InhFactEnvioSmsBprepDao;
@@ -12,11 +8,9 @@ import java.util.Locale;
 import org.apache.logging.log4j.LogManager;
 import org.jsmpp.InvalidResponseException;
 import org.jsmpp.PDUException;
-import org.jsmpp.bean.Alphabet;
 import org.jsmpp.bean.BindType;
+import org.jsmpp.bean.DataCodings;
 import org.jsmpp.bean.ESMClass;
-import org.jsmpp.bean.GeneralDataCoding;
-import org.jsmpp.bean.MessageClass;
 import org.jsmpp.bean.NumberingPlanIndicator;
 import org.jsmpp.bean.RegisteredDelivery;
 import org.jsmpp.bean.SMSCDeliveryReceipt;
@@ -141,7 +135,7 @@ public class SmppConnection {
             if (session != null) {
                 try {
 
-                    String systemIdResult = session.connectAndBind(this.smppIp, this.port, new BindParameter(BindType.BIND_TRX, this.systemId, this.password, this.systemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
+                    String systemIdResult = session.connectAndBind(this.smppIp, this.port, new BindParameter(BindType.BIND_TRX, this.systemId, this.password, this.systemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null), 8000);
                     LOGGER.info("Connected with SMSC with system id {}", systemIdResult);
 
                     result = session.submitShortMessage(this.SERVICE_TYPE,
@@ -149,7 +143,7 @@ public class SmppConnection {
                             TypeOfNumber.INTERNATIONAL, NumberingPlanIndicator.UNKNOWN, number,
                             new ESMClass(), (byte) 0, (byte) 1, TIME_FORMATTER.format(new Date()), null,
                             new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT), (byte) 0,
-                            new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0, message.getBytes());
+                            DataCodings.ZERO, (byte) 0, message.getBytes());
 
                     String messageId = result.getMessageId();
                     LOGGER.info("Messages submitted, result is {}", messageId);
@@ -183,8 +177,9 @@ public class SmppConnection {
         return this.session;
     }
 
-    /***
-     * 
+    /**
+     * *
+     *
      */
     private void closeSmppConnection() {
         try {
@@ -193,9 +188,9 @@ public class SmppConnection {
             } else {
                 this.session.close(); // cierre forzado
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             System.err.println("Error inesperado al cerrar sesión SMPP: " + e.getMessage());
         }
-        
+
     }
 }

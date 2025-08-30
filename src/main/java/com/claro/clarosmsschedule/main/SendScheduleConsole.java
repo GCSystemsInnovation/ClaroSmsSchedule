@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -241,7 +240,7 @@ public class SendScheduleConsole implements Runnable {
             isAvailable = !localTime.isBefore(this.startHour) && !localTime.isAfter(this.endHour);
         } else {
             // Turno nocturno que cruza medianoche: 19:00 - 08:00
-            isAvailable = localTime.isAfter(this.startHour) || localTime.isBefore(this.endHour);
+            isAvailable = !localTime.isAfter(this.startHour) || !localTime.isBefore(this.endHour);
         }
 
         return isAvailable;

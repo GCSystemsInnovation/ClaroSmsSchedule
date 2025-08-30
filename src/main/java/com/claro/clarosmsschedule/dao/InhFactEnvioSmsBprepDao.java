@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.claro.clarosmsschedule.dao;
 
 import com.claro.clarosmsschedule.db.DbCredential;
@@ -52,9 +48,10 @@ public class InhFactEnvioSmsBprepDao extends DbConnectionDao {
      * Method used to get all entity element.
      *
      * @param mesDesact date in format AAAAMM.
-     * @param startPagination .
-     * @param endPagination .
+     * @param startPagination start Pagination.
+     * @param endPagination end Pagination..
      * @return
+     * @throws java.sql.SQLException
      */
     public List<SmsUserDto> getUserList(String mesDesact, int startPagination, int endPagination) throws SQLException {
         Connection connection = null;
@@ -103,10 +100,69 @@ public class InhFactEnvioSmsBprepDao extends DbConnectionDao {
 
     /**
      * *
+     * Method used to get all entity element.
+     *
+     * @param mesDesact date in format AAAAMM.
+     * @param startPagination start Pagination.
+     * @param endPagination end Pagination.
+     * @param index last index.
+     * @return
+     * @throws java.sql.SQLException
+     */
+    public List<SmsUserDto> getUserListFromIndex(String mesDesact, int startPagination, int endPagination, int index) throws SQLException {
+        Connection connection = null;
+        List<SmsUserDto> smsUserDtos = new ArrayList<>();
+        try {
+            String query = "SELECT "
+                    + "ifesb.ID_SEQUENCIA AS inhFactEnvioSmsBprep_Id, "
+                    + "ifesb.N_MIN, "
+                    + "ifesb.CODIGO_SMS, "
+                    + "ifesd.DESC_SMS, "
+                    + "ifesb.ID_SEQUENCIA AS InhFactEnvioSmsDesc_Id, "
+                    + "ifesb.N_CO_ID, "
+                    + "ifesb.INTENTOS "
+                    + "FROM HERNANMZ.INH_FACT_ENVIO_SMS_BPREP ifesb "
+                    + "INNER JOIN HERNANMZ.INH_FACT_ENVIO_SMS_DESC ifesd ON ifesb.CODIGO_SMS = ifesd.CODIGO_SMS "
+                    + "WHERE ifesb.INTENTOS < 3	"
+                    + "AND ifesb.MES_DESACT = ? "
+                    + "AND ifesb.ID_SEQUENCIA >= ? "
+                    + "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+            connection = this.getDbConnection().connect();
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setString(1, mesDesact);
+            preparedStatement.setInt(2, index);
+            preparedStatement.setInt(3, startPagination);
+            preparedStatement.setInt(4, endPagination);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                SmsUserDto smsUserDto = new SmsUserDto();
+                smsUserDto.setInhFactEnvioSmsBprep_Id(resultSet.getBigDecimal(1));
+                smsUserDto.setnMin(resultSet.getString(2));
+                smsUserDto.setCodigoSms(resultSet.getBigDecimal(3).toBigInteger());
+                smsUserDto.setDescSms(resultSet.getString(4));
+                smsUserDto.setInhFactEnvioSmsDesc_Id(resultSet.getBigDecimal(5));
+                smsUserDto.setCoId(resultSet.getBigDecimal(6));
+                smsUserDto.setRetry(resultSet.getBigDecimal(7).toBigInteger());
+                smsUserDtos.add(smsUserDto);
+            }
+        } catch (ClassNotFoundException | SQLException ex) {
+            LOGGER.error(InhFactEnvioSmsBprepDao.class.getName(), formatter.format(new java.util.Date()), ex);
+        } finally {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+            }
+        }
+
+        return smsUserDtos;
+    }
+
+    /**
+     * *
      * Method used to update user data.
      *
      * @param envioSmsBprep.
      * @return
+     * @throws java.sql.SQLException
      */
     public boolean updateUser(InhFactEnvioSmsBprep envioSmsBprep) throws SQLException {
         Connection connection = null;

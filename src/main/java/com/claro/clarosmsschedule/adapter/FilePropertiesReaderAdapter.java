@@ -180,12 +180,7 @@ public class FilePropertiesReaderAdapter implements IFileReaderAdapter {
             applicationSetting.timeout = Integer.parseInt(properties.getProperty("application.timeout", "0"));
             applicationSetting.startHour = Integer.parseInt(properties.getProperty("application.start_hour", "0"));
             applicationSetting.endHour = Integer.parseInt(properties.getProperty("application.end_hour", "0"));
-            applicationSetting.pagination = Integer.parseInt(properties.getProperty("application.pagination", "0"));
-            String dbName = properties.getProperty("database.svr_smoqa.name");
-            if (dbName == null || dbName.isEmpty()) {
-                LOGGER.error("FilePropertiesReaderAdapter__fillApplicationSettingFromProperties Error: THE DATABASE NAME WASN'T LOADED database.svr_smoqa.name");
-                return null;
-            }
+            applicationSetting.pagination = Integer.parseInt(properties.getProperty("application.pagination", "0"));           
 
             return applicationSetting;
 
