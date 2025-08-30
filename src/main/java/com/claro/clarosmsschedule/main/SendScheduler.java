@@ -130,8 +130,9 @@ public class SendScheduler implements Runnable {
                     if (userList != null && !userList.isEmpty()) {
                         LOGGER.info(" ------PAGE RANGE-------:{} - {}", pagination, appApplicationSetting.pagination);
                         for (SmsUserDto smsUserDto : userList) {
-                            String messageId = "1";//this.smppConnection.broadcastMessage(smsUserDto.getDescSms(),
-                                    //smsUserDto.getnMin());
+                            String messageId = this.smppConnection.broadcastMessage(smsUserDto.getDescSms(),
+                                    smsUserDto.getnMin());
+                            
                             wait(100);
                             if (messageId != null && !messageId.isEmpty()) {
                                 InhFactEnvioSmsBprep bprep = new InhFactEnvioSmsBprep();
